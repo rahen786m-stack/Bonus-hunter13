@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="bn">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Bonus Hunter — Demo (Telegram Join)</title>
+<style>
+  :root{--bg:#071025;--card:#0f1724;--accent:#2ee6c1;--btn:#2563eb}
+  html,body{height:100%;margin:0;font-family:Inter,system-ui,Arial;background:linear-gradient(180deg,#030413,#071029);color:#e6eef6}
+  .wrap{max-width:760px;margin:18px auto;padding:14px}
+  header{ text-align:center;padding:12px 6px }
+  header h1{margin:6px 0;font-size:28px}
+  .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); padding:16px;border-radius:14px;border:1px solid rgba(255,255,255,0.03); box-shadow:0 6px 18px rgba(2,6,23,0.6)}
+  .balance{ text-align:center; padding:18px; border-radius:10px; margin-bottom:14px; background:#0b1220; }
+  .balance .amount{font-size:28px;color:var(--accent); font-weight:800}
+  .muted{color:#9fb7c5;font-size:13px}
+  .list{display:flex;flex-direction:column;gap:12px;margin-top:12px}
+  .task{display:flex;justify-content:space-between;align-items:center;padding:14px;border-radius:12px;background:#0b1220;border:1px solid rgba(255,255,255,0.03)}
+  .task .left{display:flex;flex-direction:column}
+  .task .title{font-weight:700;font-size:18px}
+  .task .reward{color:var(--accent);font-weight:800;margin-top:6px}
+  .btn{background:var(--btn);color:white;padding:10px 14px;border-radius:10px;border:0;cursor:pointer;font-weight:700;box-shadow:0 6px 18px rgba(37,99,235,0.18)}
+  .btn[disabled]{opacity:0.6;cursor:not-allowed}
+  .row{display:flex;gap:10px;align-items:center;justify-content:center;margin-top:12px}
+  .small{font-size:13px;color:#9fb7c5}
+  .ref-box{margin-top:14px;padding:10px;border-radius:10px;background:#071026;border:1px solid rgba(255,255,255,0.02)}
+  input.copy{width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:#eaf6ff}
+  footer.note{font-size:13px;color:#9fb7c5;margin-top:10px;text-align:center}
+  @media(min-width:720px){ .wrap{margin-top:36px} }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header><h1>Bonus Hunter! </h1></header>
+
+    <div class="card">
+      <div class="balance">
+        <div class="small">Balance:</div>
+        <div class="amount" id="balance">₹0</div>
+        <div class="muted">Minimum Withdraw: <strong>₹200</strong></div>
+      </div>
+
+      <div id="taskList" class="list"></div>
+
+      <div class="row" style="justify-content:space-between;margin-top:12px">
+        <div><button id="resetBtn" class="btn" style="background:#374151;padding:8px 12px"></n></div>
+        <div><button id="withdrawBtn" class="btn" style="background:#f59e0b;padding:8px 12px">Withdraw</button></div>
+      </div>
+
+      <div class="ref-box" id="refBox">
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input id="refInput" class="copy" readonly />
+          <button id="copyRef" class="btn" style="padding:8px 10px">Copy</button>
+        </div>
+        <div class="small" style="margin-top:8px">Share this referral link.  local tracking only)</div>
+      </div>
+
+      <footer class="note">l).</footer>
+    </div>
+  </div>
+
+<script>
+/* Demo-only frontend (A-mode)
+   - No server
+   - Join => open Telegram link (new tab) + credit demo balance (once per task)
+   - Referral: simple local demo. Visitors with ?ref=CODE see a claim banner.
+*/
+
+const TASKS = [
+  { id:'t1', title:'Big Reward', amount:25, link:'https://t.me/free_earn13' },
+  { id:'t2', title:'Reward', amount:25, link:'https://t.me/free_earn13' },
+  { id:'t3', title:'Reward', amount:25, link:'https://t.me/free_earn13' },
+  { id:'t4', title:'Big Reward', amount:25, link:'https://t.me/free_earn13' },
+  { id:'t5', title:'Reward', amount:25, link:'https://t.me/free_earn13' }
+];
+
+// local state
+let balance = parseInt(localStorage.getItem('balance') || '38', 10); // default 38 like screenshot earlier
+let completed = JSON.parse(localStorage.getItem('completedTasks') || '{}');
+let myRefCode = localStorage.getItem('myRefCode') || null;
+if(!myRefCode){ myRefCode = 'R' + Math.random().toString(36).slice(2,8).toUpperCase(); localStorage.setItem('myRefCode', myRefCode); }
+
+function updateBalanceUI(){ document.getElementById('balance').innerText = '₹' + balance; }
+updateBalanceUI();
+
+const taskList = document.getElementById('taskList');
+function renderTasks(){
+  taskList.innerHTML = '';
+  TASKS.forEach(t=>{
+    const el = document.createElement('div');
+    el.className = 'task';
+    el.innerHTML = `
+      <div class="left">
+        <div class="title">${t.title}</div>
+        <div class="reward">+₹${t.amount}</div>
+      </div>
+      <div>
+        <button class="btn" id="btn_${t.id}" ${completed[t.id] ? 'disabled' : ''}>${completed[t.id] ? 'Completed' : 'Join'}</button>
+      </div>`;
+    taskList.appendChild(el);
+
+    const btn = document.getElementById('btn_' + t.id);
+    btn.addEventListener('click', ()=>{
+      if(completed[t.id]) return;
+      // mark completed
+      completed[t.id] = true;
+      localStorage.setItem('completedTasks', JSON.stringify(completed));
+      btn.innerText = 'Completed'; btn.disabled = true;
+      // credit demo balance
+      balance = parseInt(balance) + t.amount;
+      localStorage.setItem('balance', balance);
+      updateBalanceUI();
+      // open telegram in new tab/window
+      window.open(t.link, '_blank');
+    });
+  });
+}
+renderTasks();
+
+// referral link UI (local demo)
+const refInput = document.getElementById('refInput');
+const copyBtn = document.getElementById('copyRef');
+function myRefLink(){ return location.origin + location.pathname + '?ref=' + myRefCode; }
+refInput.value = myRefLink();
+copyBtn.addEventListener('click', ()=>{ navigator.clipboard.writeText(refInput.value).then(()=> alert('Referral link copied!')); });
+
+// handle incoming ?ref=CODE visits (A-mode demo)
+function getQueryParam(name){
+  try{
+    const url = new URL(location.href);
+    return url.searchParams.get(name);
+  }catch(e){ return null; }
+}
+function showRefBanner(code){
+  if(!code) return;
+  // don't show if visitor already claimed this ref in their browser
+  const seenKey = 'claimedRef_' + code;
+  if(localStorage.getItem(seenKey)) return;
+
+  const banner = document.createElement('div');
+  banner.style = 'position:fixed;left:12px;right:12px;bottom:18px;padding:12px;background:linear-gradient(90deg,#05203a,#0b1630);border-radius:10px;display:flex;gap:10px;align-items:center;z-index:999';
+  banner.innerHTML = `<div style="flex:1;color:#d7fef9;font-weight:700">You visited with referral <span style="color:var(--accent)">${code}</span></div>
+  <div><button id="claimRef" class="btn">Claim</button></div>
+  <div><button id="closeRef" class="btn" style="background:#6b7280">Close</button></div>`;
+  document.body.appendChild(banner);
+
+  document.getElementById('closeRef').addEventListener('click', ()=> banner.remove());
+  document.getElementById('claimRef').addEventListener('click', ()=>{
+    // Demo behavior: mark claimed for this browser and notify visitor that referrer will be credited
+    localStorage.setItem(seenKey, '1');
+    alert('Referral noted (demo). Referrer will be able to credit this visit when they check their dashboard (local demo).');
+    banner.remove();
+    // For A-mode local recording: increment a key that belongs to the ref code (only visible on referrer browser)
+    const k = 'localRefCounts_' + code;
+    const prev = parseInt(localStorage.getItem(k) || '0', 10);
+    localStorage.setItem(k, prev + 1);
+  });
+}
+const incomingRef = getQueryParam('ref');
+if(incomingRef) showRefBanner(incomingRef);
+
+// owner double-click to claim local referrals (A-mode)
+document.getElementById('refBox').addEventListener('dblclick', ()=>{
+  const key = 'localRefCounts_' + myRefCode;
+  const cnt = parseInt(localStorage.getItem(key) || '0', 10);
+  if(cnt <= 0){ alert('No local referrals recorded for your code.'); return; }
+  if(confirm('You have ' + cnt + ' local referral visits. Credit them to your balance?')){
+    const creditAmt = cnt * 20; // each local-ref = ₹20 in demo
+    balance = parseInt(balance) + creditAmt;
+    localStorage.setItem('balance', balance);
+    updateBalanceUI();
+    localStorage.setItem(key, '0');
+    alert('Credited ₹' + creditAmt + ' to your demo balance.');
+  }
+});
+
+// withdraw button: demo only
+document.getElementById('withdrawBtn').addEventListener('click', ()=>{
+  alert('This is a demo site. Withdrawals are not real. Balance is for demonstration only.');
+});
+
+// reset demo
+document.getElementById('resetBtn').addEventListener('click', ()=>{
+  if(!confirm('Reset demo data?')) return;
+  balance = 38;
+  completed = {};
+  localStorage.setItem('balance', balance);
+  localStorage.setItem('completedTasks', JSON.stringify(completed));
+  updateBalanceUI();
+  renderTasks();
+  alert('Demo reset. Balance set to ₹38.');
+});
+
+// ensure initial balance saved
+localStorage.setItem('balance', balance);
+</script>
+</body>
+</html>
